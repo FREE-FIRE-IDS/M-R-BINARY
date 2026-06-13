@@ -1,0 +1,6 @@
+{
+  "name": "M-R BINARY FOR QUOTEX",
+  "description": "High-accuracy futuristic binary options market signaling engine for XAU/USD featuring 30-phase technical validation and live pricing.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
