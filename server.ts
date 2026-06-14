@@ -1,6 +1,5 @@
 import express from 'express';
 import path from 'path';
-import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 
 // Load environment variables in development
@@ -85,6 +84,12 @@ async function fetchRealPriceForSymbol(symbol: string) {
           instr.price = parsedPrice;
           instr.change = parsedChange;
           instr.lastSync = now;
+          
+          // Also append to history to keep it synchronised in serverless contexts!
+          instr.history.push(parsedPrice);
+          if (instr.history.length > 50) {
+            instr.history.shift();
+          }
           console.log(`[Twelve Data API] Live synced ${symbol} price to ${instr.price} (${instr.change}%)`);
         }
       } else if (data && data.status === 'error') {
@@ -95,6 +100,20 @@ async function fetchRealPriceForSymbol(symbol: string) {
     }
   } catch (err) {
     console.error(`[Twelve Data Fetch Attempt Failure for ${symbol}]`, err);
+  }
+}
+
+// Update price with a small drift for a single tick (useful for serverless environments)
+function applySingleDrift(symbol: string) {
+  const instr = instruments[symbol];
+  if (!instr) return;
+  const scale = symbol.includes('BTC') ? 15.0 : symbol.includes('JPY') ? 0.05 : (symbol.includes('EUR') || symbol.includes('GBP')) ? 0.00008 : 0.08;
+  const drift = (Math.random() - 0.5) * scale;
+  const decimals = symbol.includes('EUR') || symbol.includes('GBP') ? 5 : 2;
+  instr.price = parseFloat((instr.price + drift).toFixed(decimals));
+  instr.history.push(instr.price);
+  if (instr.history.length > 50) {
+    instr.history.shift();
   }
 }
 
@@ -114,9 +133,14 @@ setInterval(() => {
   }
 }, 1000);
 
-// Route to fetch real market data using Twelve Data API
-app.get('/api/market-data', async (req, res) => {
+// Route to fetch real market data using Twelve Data API (supports both with and without /api/ prefix)
+app.get(['/api/market-data', '/market-data'], async (req, res) => {
   const symbol = (req.query.pair as string) || 'XAU/USD';
+  
+  // Apply simulated drift tick to guarantee animation flow in serverless environments
+  applySingleDrift(symbol);
+  
+  // Sync with Twelve Data
   await fetchRealPriceForSymbol(symbol);
   
   const instr = instruments[symbol] || instruments['XAU/USD'];
@@ -129,12 +153,15 @@ app.get('/api/market-data', async (req, res) => {
   });
 });
 
-app.post('/api/generate-signal', async (req, res) => {
+app.post(['/api/generate-signal', '/generate-signal'], async (req, res) => {
   const { timeFrame, settings, pair } = req.body;
   const symbol = pair || 'XAU/USD';
   if (!timeFrame) {
     return res.status(400).json({ error: "Time Frame is required" });
   }
+
+  // Apply simulated drift tick to guarantee fresh history flow under serverless environments
+  applySingleDrift(symbol);
 
   // Sync with Twelve Data
   await fetchRealPriceForSymbol(symbol);
@@ -557,7 +584,8 @@ Render the JSON directly. Avoid any markdown indicators or backticks.`;
 
 async function startServer() {
   // Vite dev server integration
-  if (process.env.NODE_ENV !== "production") {
+  if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
+    const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
