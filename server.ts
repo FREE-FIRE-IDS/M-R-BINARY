@@ -22,20 +22,50 @@ if (process.env.GEMINI_API_KEY) {
   });
 }
 
-app.use(express.json());
+// Prevent Express body-parser from hanging on Vercel
+// Vercel serverless environment pre-parses the incoming request body, causing the standard
+// express.json() stream reader to wait indefinitely for 'data' events that have already been emitted.
+app.use((req, res, next) => {
+  if (req.body !== undefined && req.body !== null) {
+    next();
+  } else {
+    express.json()(req, res, next);
+  }
+});
 
 // Normalizer middleware to resolve Vercel serverless functions path mismatch
 app.use((req, res, next) => {
   const matchedPath = (req.headers['x-matched-path'] as string) || '';
   const originalUrlHeader = (req.headers['x-original-url'] as string) || '';
+  const vercelForwardedPath = (req.headers['x-vercel-forwarded-path'] as string) || '';
+  const forwardedPath = (req.headers['x-forwarded-path'] as string) || '';
   const reqUrl = req.url || '';
   const reqPath = req.path || '';
   const reqOriginalUrl = req.originalUrl || '';
   
-  const sources = [matchedPath, originalUrlHeader, reqUrl, reqPath, reqOriginalUrl];
+  // Extract custom Vercel query rewrites
+  let matchStr = '';
+  if (req.query && req.query.match) {
+    if (typeof req.query.match === 'string') {
+      matchStr = req.query.match;
+    } else if (Array.isArray(req.query.match)) {
+      matchStr = req.query.match.join('/');
+    }
+  }
+
+  const sources = [
+    matchedPath,
+    originalUrlHeader,
+    vercelForwardedPath,
+    forwardedPath,
+    reqUrl,
+    reqPath,
+    reqOriginalUrl,
+    matchStr
+  ];
   
-  const isGenerateSignal = sources.some(src => src.toLowerCase().includes('generate-signal'));
-  const isMarketData = sources.some(src => src.toLowerCase().includes('market-data'));
+  const isGenerateSignal = sources.some(src => src && src.toLowerCase().includes('generate-signal'));
+  const isMarketData = sources.some(src => src && src.toLowerCase().includes('market-data'));
   
   const qIdx = reqUrl.indexOf('?');
   const queryStr = qIdx !== -1 ? reqUrl.substring(qIdx) : '';
