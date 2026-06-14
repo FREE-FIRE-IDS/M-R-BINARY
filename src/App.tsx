@@ -261,7 +261,16 @@ export default function App() {
         })
       });
 
-      if (!response.ok) throw new Error("Could not construct signal data stream from the market statistics backend.");
+      if (!response.ok) {
+        let errMsg = "Could not construct signal data stream from the market statistics backend.";
+        try {
+          const errData = await response.json();
+          if (errData && errData.error) {
+            errMsg = `Backend Error: ${errData.error}`;
+          }
+        } catch (_) {}
+        throw new Error(errMsg);
+      }
       const signal: SignalResponse = await response.json();
 
       // If calculation delay is configured, perform step-by-step visual scan representation

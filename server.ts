@@ -26,26 +26,24 @@ app.use(express.json());
 
 // Normalizer middleware to resolve Vercel serverless functions path mismatch
 app.use((req, res, next) => {
-  const originalUrl = (req.headers['x-matched-path'] as string) || (req.headers['x-original-url'] as string) || req.url;
+  const matchedPath = (req.headers['x-matched-path'] as string) || '';
+  const originalUrlHeader = (req.headers['x-original-url'] as string) || '';
+  const reqUrl = req.url || '';
+  const reqPath = req.path || '';
+  const reqOriginalUrl = req.originalUrl || '';
   
-  if (req.query && req.query.match) {
-    const matchVal = req.query.match;
-    let matchPathStr = "";
-    if (typeof matchVal === 'string') {
-      matchPathStr = matchVal;
-    } else if (Array.isArray(matchVal)) {
-      matchPathStr = matchVal.map(item => typeof item === 'string' ? item : '').join('/');
-    }
-    
-    if (matchPathStr.includes('generate-signal')) {
-      req.url = '/api/generate-signal';
-    } else if (matchPathStr.includes('market-data')) {
-      req.url = '/api/market-data';
-    }
-  } else if (req.url.includes('generate-signal') || req.path.includes('generate-signal')) {
-    req.url = '/api/generate-signal';
-  } else if (req.url.includes('market-data') || req.path.includes('market-data')) {
-    req.url = '/api/market-data';
+  const sources = [matchedPath, originalUrlHeader, reqUrl, reqPath, reqOriginalUrl];
+  
+  const isGenerateSignal = sources.some(src => src.toLowerCase().includes('generate-signal'));
+  const isMarketData = sources.some(src => src.toLowerCase().includes('market-data'));
+  
+  const qIdx = reqUrl.indexOf('?');
+  const queryStr = qIdx !== -1 ? reqUrl.substring(qIdx) : '';
+  
+  if (isGenerateSignal) {
+    req.url = '/api/generate-signal' + queryStr;
+  } else if (isMarketData) {
+    req.url = '/api/market-data' + queryStr;
   }
   
   next();
