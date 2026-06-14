@@ -40,7 +40,7 @@ const instruments: Record<string, Instrument> = {
   'BTC/USD': { price: 67250.00, change: 1.45, lastSync: 0, history: [] }
 };
 
-const TWELVE_DATA_API_KEY = '873a06346b31434592ceb589f2d716f1';
+const TWELVE_DATA_API_KEY = process.env.TWELVE_DATA_API_KEY || '873a06346b31434592ceb589f2d716f1';
 
 // Seed initial history
 for (const [symbol, instr] of Object.entries(instruments)) {
@@ -53,6 +53,10 @@ for (const [symbol, instr] of Object.entries(instruments)) {
 
 // Fetch actual real asset price from Twelve Data
 async function fetchRealPriceForSymbol(symbol: string) {
+  if (!TWELVE_DATA_API_KEY) {
+    return;
+  }
+
   const instr = instruments[symbol];
   if (!instr) return;
 
@@ -63,7 +67,15 @@ async function fetchRealPriceForSymbol(symbol: string) {
   }
   
   try {
-    const response = await fetch(`https://api.twelvedata.com/quote?symbol=${symbol}&apikey=${TWELVE_DATA_API_KEY}`);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2000);
+
+    const response = await fetch(
+      `https://api.twelvedata.com/quote?symbol=${symbol}&apikey=${TWELVE_DATA_API_KEY}`,
+      { signal: controller.signal }
+    );
+    clearTimeout(timeoutId);
+
     if (response.ok) {
       const data = await response.json();
       if (data && (data.price || data.close || data.last)) {
@@ -564,4 +576,8 @@ async function startServer() {
   });
 }
 
-startServer();
+if (!process.env.VERCEL) {
+  startServer();
+}
+
+export default app;
