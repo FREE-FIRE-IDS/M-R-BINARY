@@ -6,7 +6,8 @@ interface AIChartProps {
   currentPrice: number;
   isScanning: boolean;
   scanProgress: number; // 0 to 100
-  direction: 'CALL' | 'PUT' | null;
+  direction: 'CALL' | 'PUT' | 'WAIT' | null;
+  pair?: string;
 }
 
 export const AIChart: React.FC<AIChartProps> = ({
@@ -14,15 +15,18 @@ export const AIChart: React.FC<AIChartProps> = ({
   currentPrice,
   isScanning,
   scanProgress,
-  direction
+  direction,
+  pair = 'XAU/USD'
 }) => {
   if (candles.length === 0) return null;
+
+  const decimals = pair.includes('EUR') || pair.includes('GBP') ? 5 : 2;
 
   // Calculate scaling factors dynamically
   const highs = candles.map(c => c.high);
   const lows = candles.map(c => c.low);
-  const maxPrice = Math.max(...highs, currentPrice) + 0.15;
-  const minPrice = Math.min(...lows, currentPrice) - 0.15;
+  const maxPrice = Math.max(...highs, currentPrice) + (pair === 'BTC/USD' ? 50 : pair === 'USD/JPY' ? 0.15 : pair.includes('USD/') ? 0.001 : 0.45);
+  const minPrice = Math.min(...lows, currentPrice) - (pair === 'BTC/USD' ? 50 : pair === 'USD/JPY' ? 0.15 : pair.includes('USD/') ? 0.001 : 0.45);
   const priceRange = maxPrice - minPrice || 1.0;
 
   // SVG grid dimensions
@@ -58,7 +62,7 @@ export const AIChart: React.FC<AIChartProps> = ({
           </span>
         </div>
         <div className="flex items-center space-x-3 text-[10px] font-mono">
-          <span className="text-white/60">FEED: <span className="text-emerald-400">XAU/USD OTC</span></span>
+          <span className="text-white/60">FEED: <span className="text-emerald-400">{pair} SPOT</span></span>
           <span className="text-white/30">|</span>
           <span className="text-white/60">TICK: <span className="text-[#00ff66]">LIVE</span></span>
         </div>
@@ -94,7 +98,7 @@ export const AIChart: React.FC<AIChartProps> = ({
                   fontFamily="monospace"
                   textAnchor="end"
                 >
-                  ${price.toFixed(2)}
+                  ${price.toFixed(decimals)}
                 </text>
               </g>
             );
@@ -175,13 +179,13 @@ export const AIChart: React.FC<AIChartProps> = ({
           {/* Laser tag horizontal coordinate indicator */}
           <g transform={`translate(${width - paddingX + 2}, ${getY(currentPrice) - 5})`}>
             <rect
-              width="41"
+              width={decimals === 5 ? "50" : "41"}
               height="10"
               fill="#00ff66"
               rx="1.5"
             />
             <text
-              x="20.5"
+              x={decimals === 5 ? "25" : "20.5"}
               y="7.5"
               fill="#000000"
               fontSize="6"
@@ -189,7 +193,7 @@ export const AIChart: React.FC<AIChartProps> = ({
               fontFamily="monospace"
               textAnchor="middle"
             >
-              ${currentPrice.toFixed(2)}
+              ${currentPrice.toFixed(decimals)}
             </text>
           </g>
 

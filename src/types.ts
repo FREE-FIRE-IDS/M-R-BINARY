@@ -20,7 +20,7 @@ export interface PhaseCheck {
 export interface SignalResponse {
   success: boolean;
   pair: string;
-  direction: 'CALL' | 'PUT';
+  direction: 'CALL' | 'PUT' | 'WAIT';
   timeFrame: string;
   priceAtSignal: number;
   accuracy: number;
