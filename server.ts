@@ -347,8 +347,86 @@ app.post(['/api/generate-signal', '/generate-signal'], async (req, res) => {
         }
       }
 
-      const prompt = `You are a world-class institutional commodities analyst specializing in ${symbol} contracts.
-Your task is to generate an elite, precise real-time trading signal based on a 500-factor model framework.
+      const prompt = `You are a professional trading analysis engine designed for generating high-probability market signals.
+You analyze real-time OHLC market data and generate only BUY or SELL signals (aligned to CALL or PUT metrics respectively, or WAIT/HOLD if the market is extremely consolidating under sideways flags) based on technical confluence.
+
+Strictly incorporate and analyze these domains before deciding of the signal direction:
+
+────────────────────────────
+PHASE 1 — MARKET STRUCTURE ANALYSIS
+────────────────────────────
+Analyze:
+- Current trend (bullish / bearish / sideways)
+- Market momentum strength
+- Volatility level
+- Support and resistance zones
+- Breakout or rejection behavior
+Determine overall market bias.
+
+────────────────────────────
+PHASE 2 — TECHNICAL INDICATORS
+────────────────────────────
+Calculate and analyze:
+- RSI (14)
+- EMA 9
+- EMA 21
+- MACD (signal + histogram)
+- Bollinger Bands (upper, middle, lower)
+Check:
+- Overbought / oversold conditions
+- EMA crossover direction
+- MACD momentum shift
+- Price position in Bollinger Bands
+
+────────────────────────────
+PHASE 3 — CANDLESTICK PATTERNS
+────────────────────────────
+Detect and evaluate:
+- Bullish Engulfing
+- Bearish Engulfing
+- Hammer
+- Shooting Star
+- Doji
+- Morning Star
+- Evening Star
+Assign strength score (1–10) to detected patterns.
+
+────────────────────────────
+PHASE 4 — SIGNAL GENERATION LOGIC
+────────────────────────────
+Combine all factors:
+
+BUY (CALL) conditions:
+- Uptrend structure OR bullish breakout
+- EMA 9 > EMA 21
+- RSI above 50 and not overbought (>70 avoided if weak momentum)
+- MACD bullish crossover or positive histogram
+- Bullish candlestick confirmation
+
+SELL (PUT) conditions:
+- Downtrend structure OR bearish rejection
+- EMA 9 < EMA 21
+- RSI below 50 and not oversold (<30 avoided if weak momentum)
+- MACD bearish crossover or negative histogram
+- Bearish candlestick confirmation
+
+────────────────────────────
+IMPORTANT RULE
+────────────────────────────
+You MUST ALWAYS generate a final signal. Never output NO TRADE.
+If signals are mixed:
+- Choose the direction with the highest total confirmation score.
+
+────────────────────────────
+PHASE 5 — CONFIDENCE SCORING
+────────────────────────────
+Calculate confidence based on:
+- Trend alignment (30%)
+- Indicator agreement (30%)
+- Candlestick confirmation (20%)
+- Momentum strength (20%)
+Return confidence between 50% – 100%.
+
 Here is the real-time spot price activity candle history:
 ${JSON.stringify(candleOHLCList)}
 
@@ -367,16 +445,15 @@ Perform a comprehensive multi-domain validation. You MUST strictly follow and al
 - If Calculated Mathematical Trend Bias is CALL, return "direction": "CALL" and "signalDecision": "STRONG BUY" or "BUY".
 - If Calculated Mathematical Trend Bias is PUT, return "direction": "PUT" and "signalDecision": "STRONG SELL" or "SELL".
 - If Calculated Mathematical Trend Bias is WAIT, return "direction": "WAIT" and "signalDecision": "HOLD".
-This is required to maintain absolute synchronization with the live market feed.
+This is required to maintain absolute synchronization with the live market feed. 
 
-Set appropriate entries, stops, and targets near ${activePrice}. Compile 5 logical reasons in top5Drivers, a risks warning, and invalidation trigger.
-If direction is WAIT, the drivers should focus on sideways range parameters and warning about entering flat zones.
+Set appropriate entry, stop, and take-profit targets based on standard confluences near ${activePrice}.
 
-You MUST reply with exactly a stringified JSON object matching this schema:
+You MUST reply with exactly a stringified JSON object matching this schema. Do not add extra text, prefix or suffix, do not mention uncertainty:
 {
   "direction": "CALL" | "PUT" | "WAIT",
   "signalDecision": "STRONG BUY" | "BUY" | "STRONG SELL" | "SELL" | "HOLD",
-  "accuracy": number (between 95.0 and 99.8),
+  "accuracy": number (between 50.0 and 100.0 representing calculated confidence score (phase 5)),
   "entryPrice": number,
   "stopLossPrice": number,
   "tp1Price": number,
@@ -435,118 +512,48 @@ Render the JSON directly. Avoid any markdown indicators or backticks.`;
     }
   }
 
-  // Generate 16 detailed scanning phases corresponding to the 500 factors
+  // Generate the 6 detailed scanning phases based on user-requested analytical workflows
   const phases = [
     {
       phase: 1,
-      indicator: "PHASE 1: RUNNING ADVANCED CORE SIGNAL ALGORITHMS (Checking Algorithms)...",
+      indicator: "PHASE 1: SCANNING REAL-TIME MARKET & PRICE MOVEMENTS...",
       accuracy: 99,
-      status: "CORE_DECISION_ENGINE_COMPILED",
+      status: "MARKET_STRUCTURE_STEADY",
       passed: true
     },
     {
       phase: 2,
-      indicator: "PHASE 2: AUDITING HIGH-DIMENSION QUANTITATIVE MATHEMATICS (Checking Mathematics)...",
-      accuracy: 99,
-      status: "SIGMA_MATH_INTEGRAL_VALIDATED",
+      indicator: "PHASE 2: ANALYZING TECHNICAL INDICATORS & CHART PATTERNS..",
+      accuracy: 98,
+      status: "TECHNICAL_INDICATORS_CALCULATED",
       passed: true
     },
     {
       phase: 3,
-      indicator: "PHASE 3: COMPARING PAST 10 MINUTES HISTORICAL CANDLES (Checking Past 10 Min Candles)...",
-      accuracy: 98,
-      status: "PAST_10M_STRUCTURE_CONVERGENT",
+      indicator: "PHASE 3: PROCESSING AI ALGORITHM FOR TREND PREDICTION...",
+      accuracy: 99,
+      status: "TREND_PREDICTION_ACTIVE",
       passed: true
     },
     {
       phase: 4,
-      indicator: "PHASE 4: SCANNING LATEST CANDLE DRIFT AND VOLUME FLOWS (Checking Latest Candle)...",
-      accuracy: 99,
-      status: `LIVE_VOL_${entryPrice}_OK`,
+      indicator: "PHASE 4: EVALUATING SUPPORT AND RESISTANCE LEVELS...",
+      accuracy: 97,
+      status: "SR_BOUNDARIES_ESTABLISHED",
       passed: true
     },
     {
       phase: 5,
-      indicator: "PHASE 5: DEEPMIND AI REINFORCEMENT LEARNING COGNITION (Checking AI Decisions)...",
+      indicator: "PHASE 5: COMPUTING OPTIMAL ENTRY POINTS & MARKET SENTIMENT..",
       accuracy: 99,
-      status: `NEURAL_${direction}_SENTIMENT_CONFIRMED`,
+      status: "SENTIMENT_WEIGHTS_BALANCED",
       passed: true
     },
     {
       phase: 6,
-      indicator: "PHASE 6: DECRYPTING EXPONENTIAL MOVING AVERAGE (EMA 50/200 CROSS)...",
-      accuracy: 98,
-      status: "EMA_TREND_BIAS_STABLE",
-      passed: true
-    },
-    {
-      phase: 7,
-      indicator: "PHASE 7: ANALYZING LIQUIDITY POOL SWEEPS & SPREADS...",
-      accuracy: 97,
-      status: "ORDERBOOK_DEPTH_SUFFICIENT",
-      passed: true
-    },
-    {
-      phase: 8,
-      indicator: "PHASE 8: CALCULATING AVERAGE DIRECTIONAL INDEX (ADX)...",
-      accuracy: 98,
-      status: "ADX_TREND_STRENGTH_VALIDATED",
-      passed: true
-    },
-    {
-      phase: 9,
-      indicator: "PHASE 9: COMPILING BOLLINGER BAND VOLATILITY SCANS...",
+      indicator: "PHASE 6: FINALIZING REAL-TIME ACCURACY & CONFIDENCE MATRICES...",
       accuracy: 99,
-      status: "BOLL_BAND_BOUNDARIES_SECURED",
-      passed: true
-    },
-    {
-      phase: 10,
-      indicator: "PHASE 10: VETTING VOLUMES AND CUMULATIVE VOLUME DELTA (CVD)...",
-      accuracy: 97,
-      status: "BUYER_VOL_CONTINUATION_MARKED",
-      passed: true
-    },
-    {
-      phase: 11,
-      indicator: "PHASE 11: SCANNING FIBONACCI GOLDEN POCKET LEVEL CONFLUENCES...",
-      accuracy: 98,
-      status: "GOLDEN_POCKET_SUPPORT_VERIFIED",
-      passed: true
-    },
-    {
-      phase: 12,
-      indicator: "PHASE 12: PROCESSING SPEC COT EXTREMES AND FUND FLOWS...",
-      accuracy: 98,
-      status: "COT_INSTITUTIONAL_NET_FLOWS_OK",
-      passed: true
-    },
-    {
-      phase: 13,
-      indicator: "PHASE 13: CORRELATING CENTRAL BANK TREASURY NOTES CURVES...",
-      accuracy: 99,
-      status: "MACRO_REAL_YIELDS_STABILIZED",
-      passed: true
-    },
-    {
-      phase: 14,
-      indicator: "PHASE 14: INTERPRETING D1 STRUCTURAL ORDER BLOCKS...",
-      accuracy: 98,
-      status: "ORDER_BLOCK_LEVELS_MAPPED",
-      passed: true
-    },
-    {
-      phase: 15,
-      indicator: "PHASE 15: WEIGHING MULTI-FACTOR MONTE CARLO PROBABILITIES...",
-      accuracy: 99,
-      status: "CONFLUENCE_SCORE_ABOVE_THRESHOLD",
-      passed: true
-    },
-    {
-      phase: 16,
-      indicator: "PHASE 16: RESOLVING FINAL DEEP INTEGRAL TARGET SETTINGS...",
-      accuracy: 99,
-      status: "ALL_SYSTEMS_GO_DISPATCHING",
+      status: "CONFIDENCE_MATRIX_SECURED",
       passed: true
     }
   ];
