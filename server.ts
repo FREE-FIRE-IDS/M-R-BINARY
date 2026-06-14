@@ -154,11 +154,12 @@ app.get(['/api/market-data', '/market-data'], async (req, res) => {
 });
 
 app.post(['/api/generate-signal', '/generate-signal'], async (req, res) => {
-  const { timeFrame, settings, pair } = req.body;
-  const symbol = pair || 'XAU/USD';
-  if (!timeFrame) {
-    return res.status(400).json({ error: "Time Frame is required" });
-  }
+  try {
+    const { timeFrame, settings, pair } = req.body;
+    const symbol = pair || 'XAU/USD';
+    if (!timeFrame) {
+      return res.status(400).json({ error: "Time Frame is required" });
+    }
 
   // Apply simulated drift tick to guarantee fresh history flow under serverless environments
   applySingleDrift(symbol);
@@ -587,6 +588,13 @@ Render the JSON directly. Avoid any markdown indicators or backticks.`;
     riskWarning,
     invalidation
   });
+  } catch (error: any) {
+    console.error("Error in generate-signal handler:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message || "An unexpected error occurred in our mathematical engine."
+    });
+  }
 });
 
 async function startServer() {
