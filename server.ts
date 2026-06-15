@@ -108,6 +108,7 @@ for (const [symbol, instr] of Object.entries(instruments)) {
 }
 
 let globalApiCooldownUntil = 0;
+let geminiCooldownUntil = 0;
 
 // Fetch direct real-market candles from Yahoo Finance or Binance (No Mock, 100% Authentic Mathematics)
 async function fetchRealMarketHistory(symbol: string, timeFrame: string): Promise<number[]> {
@@ -661,23 +662,27 @@ async function handleGenerateSignal(req: any, res: any) {
 
   // IF SYSTEM-LEVEL GEMINI API IS PROVISIONED, DO DEEP AI CANDLE PATTERN CHECK!
   if (ai) {
-    try {
-      const candleOHLCList = [];
-      const sliceSize = Math.max(1, Math.floor(activeHistory.length / 8));
-      for (let i = 0; i < activeHistory.length; i += sliceSize) {
-        const subList = activeHistory.slice(i, i + sliceSize);
-        if (subList.length > 0) {
-          candleOHLCList.push({
-            open: parseFloat(subList[0].toFixed(decimals)),
-            high: parseFloat(Math.max(...subList).toFixed(decimals)),
-            low: parseFloat(Math.min(...subList).toFixed(decimals)),
-            close: parseFloat(subList[subList.length - 1].toFixed(decimals)),
-            volume: Math.floor(Math.random() * 800) + 250
-          });
+    const now = Date.now();
+    if (now < geminiCooldownUntil) {
+      console.log(`[M-R AI ENGINE] Cooldown active. Bypassing Gemini API query for ${symbol} to protect quota. Remaining time: ${Math.ceil((geminiCooldownUntil - now) / 1000)}s`);
+    } else {
+      try {
+        const candleOHLCList = [];
+        const sliceSize = Math.max(1, Math.floor(activeHistory.length / 8));
+        for (let i = 0; i < activeHistory.length; i += sliceSize) {
+          const subList = activeHistory.slice(i, i + sliceSize);
+          if (subList.length > 0) {
+            candleOHLCList.push({
+              open: parseFloat(subList[0].toFixed(decimals)),
+              high: parseFloat(Math.max(...subList).toFixed(decimals)),
+              low: parseFloat(Math.min(...subList).toFixed(decimals)),
+              close: parseFloat(subList[subList.length - 1].toFixed(decimals)),
+              volume: Math.floor(Math.random() * 800) + 250
+            });
+          }
         }
-      }
 
-      const prompt = `You are a professional trading analysis engine designed for generating high-probability market signals.
+        const prompt = `You are a professional trading analysis engine designed for generating high-probability market signals.
 You analyze real-time OHLC market data and generate only strong BUY or SELL signals (aligned to CALL or PUT metrics respectively, with absolutely no sideways WAIT or HOLD alternatives) based on technical confluence.
 
 Strictly incorporate and analyze these domains before deciding of the signal direction:
@@ -796,48 +801,62 @@ You MUST reply with exactly a stringified JSON object matching this schema. Do n
 }
 Render the JSON directly. Avoid any markdown indicators or backticks.`;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json"
-        }
-      });
+        const response = await ai.models.generateContent({
+          model: "gemini-3.5-flash",
+          contents: prompt,
+          config: {
+            responseMimeType: "application/json"
+          }
+        });
 
-      let parsedJSONText = response.text?.trim() || "";
-      if (parsedJSONText) {
-        if (parsedJSONText.startsWith("```")) {
-          parsedJSONText = parsedJSONText.replace(/^```(?:json)?\n?/i, "").replace(/\n?```$/, "").trim();
+        let parsedJSONText = response.text?.trim() || "";
+        if (parsedJSONText) {
+          if (parsedJSONText.startsWith("```")) {
+            parsedJSONText = parsedJSONText.replace(/^```(?:json)?\n?/i, "").replace(/\n?```$/, "").trim();
+          }
+          
+          const result = JSON.parse(parsedJSONText);
+          if (result.direction === 'CALL' || result.direction === 'PUT' || result.direction === 'WAIT') {
+            direction = result.direction;
+          }
+          if (result.signalDecision) {
+            signalDecision = result.signalDecision;
+          }
+          if (typeof result.accuracy === 'number' && result.accuracy >= 90) {
+            aggregateAccuracy = parseFloat(result.accuracy.toFixed(2));
+            confidenceVal = Math.round(aggregateAccuracy);
+          }
+          if (typeof result.entryPrice === 'number') entryPrice = parseFloat(result.entryPrice.toFixed(decimals));
+          if (typeof result.stopLossPrice === 'number') stopLossPrice = parseFloat(result.stopLossPrice.toFixed(decimals));
+          if (typeof result.tp1Price === 'number') tp1Price = parseFloat(result.tp1Price.toFixed(decimals));
+          if (typeof result.tp2Price === 'number') tp2Price = parseFloat(result.tp2Price.toFixed(decimals));
+          if (typeof result.tp3Price === 'number') tp3Price = parseFloat(result.tp3Price.toFixed(decimals));
+          if (result.rrRatio) rrRatio = result.rrRatio;
+          if (Array.isArray(result.top5Drivers) && result.top5Drivers.length === 5) {
+            top5Drivers = result.top5Drivers;
+          }
+          if (result.riskWarning) riskWarning = result.riskWarning;
+          if (result.invalidation) invalidation = result.invalidation;
+          if (result.rationale) {
+            aiReasoning = result.rationale;
+          }
         }
-        
-        const result = JSON.parse(parsedJSONText);
-        if (result.direction === 'CALL' || result.direction === 'PUT' || result.direction === 'WAIT') {
-          direction = result.direction;
-        }
-        if (result.signalDecision) {
-          signalDecision = result.signalDecision;
-        }
-        if (typeof result.accuracy === 'number' && result.accuracy >= 90) {
-          aggregateAccuracy = parseFloat(result.accuracy.toFixed(2));
-          confidenceVal = Math.round(aggregateAccuracy);
-        }
-        if (typeof result.entryPrice === 'number') entryPrice = parseFloat(result.entryPrice.toFixed(decimals));
-        if (typeof result.stopLossPrice === 'number') stopLossPrice = parseFloat(result.stopLossPrice.toFixed(decimals));
-        if (typeof result.tp1Price === 'number') tp1Price = parseFloat(result.tp1Price.toFixed(decimals));
-        if (typeof result.tp2Price === 'number') tp2Price = parseFloat(result.tp2Price.toFixed(decimals));
-        if (typeof result.tp3Price === 'number') tp3Price = parseFloat(result.tp3Price.toFixed(decimals));
-        if (result.rrRatio) rrRatio = result.rrRatio;
-        if (Array.isArray(result.top5Drivers) && result.top5Drivers.length === 5) {
-          top5Drivers = result.top5Drivers;
-        }
-        if (result.riskWarning) riskWarning = result.riskWarning;
-        if (result.invalidation) invalidation = result.invalidation;
-        if (result.rationale) {
-          aiReasoning = result.rationale;
+      } catch (err: any) {
+        const errorText = typeof err === 'string' ? err : (err?.message || JSON.stringify(err));
+        console.log("[M-R AI ENGINE] Fallback active. Handled successfully:", errorText);
+
+        // Detect resource exhaustion/rate limits and initiate coolding down phase
+        const isQuotaExceeded = errorText.includes('429') || 
+                                errorText.toLowerCase().includes('quota') || 
+                                errorText.toLowerCase().includes('rate_limit') ||
+                                errorText.toLowerCase().includes('resource_exhausted') ||
+                                errorText.toLowerCase().includes('limit');
+        if (isQuotaExceeded) {
+          // Trigger a 30 seconds cooldown phase on the server to save quota
+          geminiCooldownUntil = Date.now() + 30000;
+          console.log("[M-R AI ENGINE] Rate limiting active. Initiated a 30s cooldown phase.");
         }
       }
-    } catch (err) {
-      console.log("[M-R AI ENGINE] Fallback active. Handled successfully:", err);
     }
   }
 
