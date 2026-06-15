@@ -30,7 +30,7 @@ export default function App() {
   const [apiError, setApiError] = useState('');
   const [settings, setSettings] = useState({
     delaySeconds: 5,         // Locked to best Ultra delay (performs all 16 deep phases visually)
-    allowWaitSignal: false,  // Disabled to ensure we only get high probability UP and DOWN signals
+    allowWaitSignal: true,   // Enabled by default so we get Wait signals on sideways chop
     aiMindsetFocus: 98       // Maximized focus for Deep Institutional accuracy
   });
   
@@ -685,8 +685,8 @@ export default function App() {
                     The analytical contract parameters will sync instantly with your elected time horizon.
                   </p>
 
-                  <div className="grid grid-cols-4 sm:grid-cols-7 gap-2 mb-6" id="time_select_grid">
-                    {(['5 Sec', '15 Sec', '1 Min', '2 Min', '5 Min', '15 Min', '30 Min'] as TimeFrameOption[]).map((time) => {
+                  <div className="grid grid-cols-5 gap-2 mb-6" id="time_select_grid">
+                    {(['1 Min', '2 Min', '5 Min', '15 Min', '30 Min'] as TimeFrameOption[]).map((time) => {
                       const isSelected = selectedTime === time;
                       return (
                         <button
@@ -696,7 +696,7 @@ export default function App() {
                             playBeep(700, 'sine', 0.05);
                             setSelectedTime(time);
                           }}
-                          className={`py-2 px-1 text-center font-mono text-[10px] sm:text-xs rounded border transition-all ${
+                          className={`py-2 px-1 text-center font-mono text-xs rounded border transition-all ${
                             isSelected 
                               ? 'bg-[#00ff66] text-black border-[#00ff66] font-bold shadow-xs' 
                               : 'bg-[#030b05] text-[#00ff66] border-[#00ff66]/30 hover:border-[#00ff66]/60'

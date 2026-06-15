@@ -45,7 +45,7 @@ export interface SignalResponse {
 }
 
 export type ScreenState = 'LOGIN' | 'INTRO_ANIMATION' | 'DASHBOARD';
-export type TimeFrameOption = '5 Sec' | '15 Sec' | '1 Min' | '2 Min' | '5 Min' | '15 Min' | '30 Min';
+export type TimeFrameOption = '1 Min' | '2 Min' | '5 Min' | '15 Min' | '30 Min';
 
 export interface CandleData {
   time: string;
